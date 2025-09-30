@@ -18,7 +18,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.31.0'
+          flutter-version: '3.30.0'  # try a version that the action supports
           channel: 'stable'
 
       - name: Flutter doctor
