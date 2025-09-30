@@ -31,13 +31,28 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
 
-      - name: Switch Flutter to desired version (3.31.0)
+      - name: Switch Flutter to a supported release (tries several tags)
         run: |
           echo "FLUTTER_ROOT is: $FLUTTER_ROOT"
           cd "$FLUTTER_ROOT"
           git fetch --tags --force
-          git checkout 3.31.0 || git checkout tags/3.31.0
-          flutter --version
+          # Try a list of known-good tags (adjust order if you prefer another)
+          for tag in 3.32.8 3.32.6 3.32.3 3.31.0-0.1.pre 3.31.0-0.0.pre; do
+            echo "Trying tag: $tag"
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              git checkout "refs/tags/$tag" -q
+              echo "Checked out tag $tag"
+              break
+            fi
+            # try remote branch if tag missing
+            if git ls-remote --heads origin "$tag" | grep -q "$tag"; then
+              git checkout "origin/$tag" -q
+              echo "Checked out origin/$tag"
+              break
+            fi
+          done
+          # show the flutter version to confirm
+          ./bin/flutter --version || flutter --version
 
       - name: Flutter doctor
         run: flutter doctor -v
@@ -45,20 +60,17 @@ jobs:
       - name: Accept Android Licenses
         run: yes | flutter doctor --android-licenses
 
-      - name: Ensure Flutter packages (optional)
+      - name: Ensure Flutter packages
         run: |
-          # If your project is a Flet app, this is usually handled by flet build,
-          # but running pub get here helps avoid some dependency issues.
           cd $GITHUB_WORKSPACE
           flutter pub get || true
 
       - name: Build APK with Flet
         run: |
           cd $GITHUB_WORKSPACE
-          # If your entry point is main.py in repo root this is enough:
+          # if your entrypoint is main.py in repo root:
           flet build apk --release
-
-          # If your entrypoint is not main.py in root, use:
+          # If your entrypoint is in another module, uncomment & edit:
           # flet build apk --release --module-name path.to.module
 
       - name: Upload APK artifact
