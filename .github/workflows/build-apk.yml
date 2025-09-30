@@ -3,34 +3,38 @@ name: Build Flet APK
 on:
   push:
     branches:
-      - "*"
+      - master
+      - main
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install Flet
-        run: pip install flet
-
-      - name: Install Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.2'
+          flutter-version: '3.31.0'
+          channel: 'stable'
 
-      - name: Build APK
-        run: flet build apk
+      - name: Flutter doctor
+        run: flutter doctor -v
 
-      - name: Upload APK artifact
+      - name: Accept Android Licenses
+        run: yes | flutter doctor --android-licenses
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BAC_DZ-apk
-          path: build/**
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
