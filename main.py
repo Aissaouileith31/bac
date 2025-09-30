@@ -8,3 +8,4 @@ try:
     ft.app(target=main, assets_dir="assets")
 except Exception as e:
     print("Error:", e)
+
