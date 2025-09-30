@@ -15,11 +15,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Flutter
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install/upgrade Flet CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade flet flet-cli
+
+      - name: Setup Flutter (base version)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.30.0'  # try a version that the action supports
+          flutter-version: '3.19.0'
           channel: 'stable'
+
+      - name: Switch Flutter to desired version (3.31.0)
+        run: |
+          echo "FLUTTER_ROOT is: $FLUTTER_ROOT"
+          cd "$FLUTTER_ROOT"
+          git fetch --tags --force
+          git checkout 3.31.0 || git checkout tags/3.31.0
+          flutter --version
 
       - name: Flutter doctor
         run: flutter doctor -v
@@ -27,14 +45,24 @@ jobs:
       - name: Accept Android Licenses
         run: yes | flutter doctor --android-licenses
 
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Ensure Flutter packages (optional)
+        run: |
+          # If your project is a Flet app, this is usually handled by flet build,
+          # but running pub get here helps avoid some dependency issues.
+          cd $GITHUB_WORKSPACE
+          flutter pub get || true
 
-      - name: Build release APK
-        run: flutter build apk --release
+      - name: Build APK with Flet
+        run: |
+          cd $GITHUB_WORKSPACE
+          # If your entry point is main.py in repo root this is enough:
+          flet build apk --release
 
-      - name: Upload APK
+          # If your entrypoint is not main.py in root, use:
+          # flet build apk --release --module-name path.to.module
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/**
