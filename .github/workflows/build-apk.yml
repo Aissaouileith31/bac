@@ -2,7 +2,7 @@ name: Build Flet APK
 
 on:
   push:
-    branches: 
+    branches:
       - "*"
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
         run: flet build apk
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BAC_DZ-apk
-          path: build/*
+          path: build/**
