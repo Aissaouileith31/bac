@@ -7,6 +7,11 @@ on:
       - main
   pull_request:
 
+env:
+  # If your python entrypoint is not main.py in repo root, set MODULE_NAME
+  # e.g. MODULE_NAME: "app" or "src.app"
+  MODULE_NAME: ""
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,8 +29,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade flet flet-cli
+          echo "flet version:"
+          flet --version || true
 
-      - name: Setup Flutter (base version)
+      - name: Setup Flutter (base)
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.0'
@@ -36,7 +43,6 @@ jobs:
           echo "FLUTTER_ROOT is: $FLUTTER_ROOT"
           cd "$FLUTTER_ROOT"
           git fetch --tags --force
-          # Try a list of known-good tags (adjust order if you prefer another)
           for tag in 3.32.8 3.32.6 3.32.3 3.31.0-0.1.pre 3.31.0-0.0.pre; do
             echo "Trying tag: $tag"
             if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
@@ -44,14 +50,12 @@ jobs:
               echo "Checked out tag $tag"
               break
             fi
-            # try remote branch if tag missing
             if git ls-remote --heads origin "$tag" | grep -q "$tag"; then
               git checkout "origin/$tag" -q
               echo "Checked out origin/$tag"
               break
             fi
           done
-          # show the flutter version to confirm
           ./bin/flutter --version || flutter --version
 
       - name: Flutter doctor
@@ -60,18 +64,31 @@ jobs:
       - name: Accept Android Licenses
         run: yes | flutter doctor --android-licenses
 
+      - name: Show workspace files (sanity)
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          ls -la $GITHUB_WORKSPACE
+          echo "Top-level files:"
+          ls -la $GITHUB_WORKSPACE | sed -n '1,200p'
+
       - name: Ensure Flutter packages
         run: |
           cd $GITHUB_WORKSPACE
           flutter pub get || true
 
-      - name: Build APK with Flet
+      - name: Build APK with Flet (no --release flag)
         run: |
           cd $GITHUB_WORKSPACE
-          # if your entrypoint is main.py in repo root:
-          flet build apk --release
-          # If your entrypoint is in another module, uncomment & edit:
-          # flet build apk --release --module-name path.to.module
+          echo "flet version:"
+          flet --version
+          # If MODULE_NAME is set (non-empty) use it, otherwise build normally
+          if [ -n "$MODULE_NAME" ]; then
+            echo "Using module name: $MODULE_NAME"
+            flet build apk --module-name "$MODULE_NAME"
+          else
+            echo "No MODULE_NAME set — building with default entrypoint (main.py)"
+            flet build apk
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
